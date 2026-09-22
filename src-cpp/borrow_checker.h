@@ -66,8 +66,6 @@ private:
 
   // Cross-function helpers
   FnDecl *lookup_fn(const std::string &name);
-  FnDecl *lookup_method(const std::string &type_name,
-                        const std::string &method_name);
 
 public:
   NLLBorrowChecker() = default;
