@@ -588,21 +588,9 @@ bool NLLBorrowChecker::check_borrow_rules(CFG &cfg) {
     if (!node.stmt && !node.expr) continue;
 
     std::set<std::string> reads, writes;
-    if (node.stmt) {
-      if (auto *es = dynamic_cast<ExprStmt *>(node.stmt))
-        collect_var_uses(es->expr.get(), reads, writes, false);
-      else if (auto *let = dynamic_cast<LetStmt *>(node.stmt)) {
-        if (let->init_expr)
-          collect_var_uses(let->init_expr.get(), reads, writes, false);
-        writes.insert(let->name);
-      } else if (auto *ret = dynamic_cast<ReturnStmt *>(node.stmt)) {
-        if (ret->value)
-          collect_var_uses(ret->value.get(), reads, writes, false);
-      }
-    }
-    if (node.expr) {
-      collect_var_uses(node.expr, reads, writes, false);
-    }
+    // Use CFG's precomputed gen/kill sets for complete coverage
+    reads = node.gen;
+    writes = node.kill;
 
     // Check reads against active borrows
     for (auto &var : reads) {
