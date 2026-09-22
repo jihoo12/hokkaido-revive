@@ -175,6 +175,11 @@ void CFGBuilder::collect_expr_gen_kill(Expr *expr, std::set<std::string> &gen,
       collect_expr_gen_kill(arg.get(), gen, kill, false);
     return;
   }
+  if (auto *atm = dynamic_cast<AtomicExpr *>(expr)) {
+    for (auto &arg : atm->args)
+      collect_expr_gen_kill(arg.get(), gen, kill, false);
+    return;
+  }
   // Literals, null, asm, atomic — no variable references
 }
 

@@ -48,17 +48,6 @@ FnDecl *NLLBorrowChecker::lookup_fn(const std::string &name) {
   return nullptr;
 }
 
-FnDecl *NLLBorrowChecker::lookup_method(const std::string &type_name,
-                                         const std::string &method_name) {
-  for (auto *impl : impl_decls) {
-    if (impl->type_name != type_name) continue;
-    for (auto &m : impl->methods) {
-      if (m->name == method_name) return m.get();
-    }
-  }
-  return nullptr;
-}
-
 // =========================================================================
 // Static helpers
 // =========================================================================
@@ -123,9 +112,8 @@ void NLLBorrowChecker::collect_borrows_expr(
     // Then, check if callee takes &T/&mut T params → implicit borrows
     if (!call->callee.empty()) {
       if (FnDecl *callee = lookup_fn(call->callee)) {
-        size_t param_offset = 0;
-        for (size_t i = 0; i < call->args.size() && i + param_offset < callee->params.size(); i++) {
-          auto &param = callee->params[i + param_offset];
+        for (size_t i = 0; i < call->args.size() && i < callee->params.size(); i++) {
+          auto &param = callee->params[i];
           if (is_ref_type(param.type_ann)) {
             std::string var = root_var(call->args[i].get());
             if (!var.empty()) {
@@ -248,6 +236,11 @@ void NLLBorrowChecker::collect_borrows_expr(
     collect_borrows_expr(ifexpr->condition.get(), node_id, ref_var);
     collect_borrows_expr(ifexpr->then_expr.get(), node_id, ref_var);
     collect_borrows_expr(ifexpr->else_expr.get(), node_id, ref_var);
+    return;
+  }
+  if (auto *atm = dynamic_cast<AtomicExpr *>(expr)) {
+    for (auto &arg : atm->args)
+      collect_borrows_expr(arg.get(), node_id, ref_var);
     return;
   }
   if (auto *closure = dynamic_cast<ClosureExpr *>(expr)) {
@@ -413,6 +406,11 @@ bool NLLBorrowChecker::check_closures_in_expr(Expr *expr) {
       if (check_closures_in_expr(fexpr.get())) return true;
     return false;
   }
+  if (auto *atm = dynamic_cast<AtomicExpr *>(expr)) {
+    for (auto &arg : atm->args)
+      if (check_closures_in_expr(arg.get())) return true;
+    return false;
+  }
   return false;
 }
 
@@ -449,6 +447,11 @@ bool NLLBorrowChecker::check_closures_in_stmt(Stmt *stmt) {
     if (while_s->condition && check_closures_in_expr(while_s->condition.get()))
       return true;
     for (auto &s : while_s->body)
+      if (check_closures_in_stmt(s.get())) return true;
+    return false;
+  }
+  if (auto *region = dynamic_cast<RegionStmt *>(stmt)) {
+    for (auto &s : region->body)
       if (check_closures_in_stmt(s.get())) return true;
     return false;
   }
@@ -572,6 +575,11 @@ static void collect_var_uses(Expr *expr, std::set<std::string> &reads,
     collect_var_uses(borrow->operand.get(), reads, writes, false);
     return;
   }
+  if (auto *atm = dynamic_cast<AtomicExpr *>(expr)) {
+    for (auto &arg : atm->args)
+      collect_var_uses(arg.get(), reads, writes, false);
+    return;
+  }
 }
 
 bool NLLBorrowChecker::check_borrow_rules(CFG &cfg) {
@@ -636,8 +644,10 @@ bool NLLBorrowChecker::check_borrow_rules(CFG &cfg) {
       int b_end = b.end_node;
       if (a_start <= b_end && b_start <= a_end) {
         if (a.is_mut || b.is_mut) {
-          set_error("cannot borrow '" + a.var_name +
-                        "' because it is also borrowed here",
+          std::string a_kind = a.is_mut ? "mutably" : "shared";
+          std::string b_kind = b.is_mut ? "mutably" : "shared";
+          set_error("cannot borrow '" + a.var_name + "' as " + b_kind +
+                        " because it is already borrowed as " + a_kind,
                     a.is_mut ? a.expr : b.expr);
           return false;
         }
