@@ -281,6 +281,16 @@ int main(int argc, char *argv[]) {
           }
         }
       }
+      // Run NLL borrow checker on impl method declarations
+      for (auto &decl : decls) {
+        if (auto *impl = dynamic_cast<ImplDecl *>(decl.get())) {
+          for (auto &method : impl->methods) {
+            if (!bc.check_fn(method->name, method.get())) {
+              return 1;
+            }
+          }
+        }
+      }
     }
 
     CodeGen cg(Context, *M, Builder, Freestanding);

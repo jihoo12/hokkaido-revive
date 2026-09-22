@@ -42,6 +42,25 @@ fn test_return_param() -> int {
     return *r
 }
 
+struct Counter {
+    val: int
+}
+
+impl Counter {
+    fn get(self: Counter) -> int {
+        return self.val
+    }
+    fn inc(self: Counter) -> void {
+        self.val = self.val + 1
+    }
+}
+
+fn test_impl_method() -> int {
+    let c: Counter = Counter { val: 10 }
+    let v: int = c.get()
+    return v
+}
+
 fn test_match_borrow() -> int {
     let x: int = 10
     let r: &int = &x
@@ -56,5 +75,6 @@ fn main() -> int {
     let code2: int = test_crossfn_shared()
     let code3: int = test_return_param()
     let code4: int = test_match_borrow()
-    return code2 + code3 + code + code4
+    let code5: int = test_impl_method()
+    return code2 + code3 + code + code4 + code5
 }
