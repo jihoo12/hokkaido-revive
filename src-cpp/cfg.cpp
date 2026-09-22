@@ -157,6 +157,12 @@ void CFGBuilder::collect_expr_gen_kill(Expr *expr, std::set<std::string> &gen,
       collect_expr_gen_kill(fexpr.get(), gen, kill, false);
     return;
   }
+  if (auto *match = dynamic_cast<MatchExpr *>(expr)) {
+    collect_expr_gen_kill(match->value.get(), gen, kill, false);
+    for (auto &arm : match->arms)
+      collect_expr_gen_kill(arm.expr.get(), gen, kill, false);
+    return;
+  }
   if (auto *ifexpr = dynamic_cast<IfExpr *>(expr)) {
     collect_expr_gen_kill(ifexpr->condition.get(), gen, kill, false);
     collect_expr_gen_kill(ifexpr->then_expr.get(), gen, kill, false);

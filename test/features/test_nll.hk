@@ -42,9 +42,19 @@ fn test_return_param() -> int {
     return *r
 }
 
+fn test_match_borrow() -> int {
+    let x: int = 10
+    let r: &int = &x
+    let val: int = match true {
+        _ => *r
+    }
+    return val
+}
+
 fn main() -> int {
     let code: int = test_sequential()
     let code2: int = test_crossfn_shared()
     let code3: int = test_return_param()
-    return code2 + code3 + code
+    let code4: int = test_match_borrow()
+    return code2 + code3 + code + code4
 }

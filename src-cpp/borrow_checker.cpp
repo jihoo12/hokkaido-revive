@@ -237,6 +237,13 @@ void NLLBorrowChecker::collect_borrows_expr(
       collect_borrows_expr(fexpr.get(), node_id, ref_var);
     return;
   }
+  if (auto *match = dynamic_cast<MatchExpr *>(expr)) {
+    collect_borrows_expr(match->value.get(), node_id, ref_var);
+    for (auto &arm : match->arms) {
+      collect_borrows_expr(arm.expr.get(), node_id, ref_var);
+    }
+    return;
+  }
   if (auto *ifexpr = dynamic_cast<IfExpr *>(expr)) {
     collect_borrows_expr(ifexpr->condition.get(), node_id, ref_var);
     collect_borrows_expr(ifexpr->then_expr.get(), node_id, ref_var);
@@ -345,6 +352,12 @@ bool NLLBorrowChecker::check_closures_in_expr(Expr *expr) {
     if (check_closures_in_expr(ifexpr->condition.get())) return true;
     if (check_closures_in_expr(ifexpr->then_expr.get())) return true;
     if (check_closures_in_expr(ifexpr->else_expr.get())) return true;
+    return false;
+  }
+  if (auto *match = dynamic_cast<MatchExpr *>(expr)) {
+    if (check_closures_in_expr(match->value.get())) return true;
+    for (auto &arm : match->arms)
+      if (check_closures_in_expr(arm.expr.get())) return true;
     return false;
   }
   if (auto *mcall = dynamic_cast<MethodCallExpr *>(expr)) {
@@ -487,6 +500,13 @@ static void collect_var_uses(Expr *expr, std::set<std::string> &reads,
   if (auto *ctor = dynamic_cast<ConstructorExpr *>(expr)) {
     for (auto &[_, fexpr] : ctor->fields)
       collect_var_uses(fexpr.get(), reads, writes, false);
+    return;
+  }
+  if (auto *match = dynamic_cast<MatchExpr *>(expr)) {
+    collect_var_uses(match->value.get(), reads, writes, false);
+    for (auto &arm : match->arms) {
+      collect_var_uses(arm.expr.get(), reads, writes, false);
+    }
     return;
   }
   if (auto *ifexpr = dynamic_cast<IfExpr *>(expr)) {
