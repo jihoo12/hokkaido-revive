@@ -366,6 +366,47 @@ bool NLLBorrowChecker::check_closures_in_expr(Expr *expr) {
       if (check_closures_in_expr(arg.get())) return true;
     return false;
   }
+  if (auto *unary = dynamic_cast<UnaryExpr *>(expr)) {
+    if (check_closures_in_expr(unary->operand.get())) return true;
+    return false;
+  }
+  if (auto *compound = dynamic_cast<CompoundAssignExpr *>(expr)) {
+    if (check_closures_in_expr(compound->target.get())) return true;
+    if (check_closures_in_expr(compound->value.get())) return true;
+    return false;
+  }
+  if (auto *borrow = dynamic_cast<BorrowExpr *>(expr)) {
+    if (check_closures_in_expr(borrow->operand.get())) return true;
+    return false;
+  }
+  if (auto *deref = dynamic_cast<DerefExpr *>(expr)) {
+    if (check_closures_in_expr(deref->operand.get())) return true;
+    return false;
+  }
+  if (auto *sub = dynamic_cast<SubscriptExpr *>(expr)) {
+    if (check_closures_in_expr(sub->array.get())) return true;
+    if (check_closures_in_expr(sub->index.get())) return true;
+    return false;
+  }
+  if (auto *field = dynamic_cast<FieldAccessExpr *>(expr)) {
+    if (check_closures_in_expr(field->object.get())) return true;
+    return false;
+  }
+  if (auto *arr = dynamic_cast<ArrayLitExpr *>(expr)) {
+    for (auto &el : arr->elements)
+      if (check_closures_in_expr(el.get())) return true;
+    return false;
+  }
+  if (auto *tup = dynamic_cast<TupleExpr *>(expr)) {
+    for (auto &el : tup->elements)
+      if (check_closures_in_expr(el.get())) return true;
+    return false;
+  }
+  if (auto *ctor = dynamic_cast<ConstructorExpr *>(expr)) {
+    for (auto &[_, fexpr] : ctor->fields)
+      if (check_closures_in_expr(fexpr.get())) return true;
+    return false;
+  }
   return false;
 }
 
