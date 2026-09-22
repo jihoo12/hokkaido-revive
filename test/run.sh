@@ -34,9 +34,21 @@ run_test() {
     local out="$TMPDIR/$(basename "$file" .hk)"
 
     if ! "$HOKKAIDO" "$file" -o "$out" -O2 2>/dev/null; then
+        # Check for compile_fail expectation
+        if grep -q "// compile_fail" "$file" 2>/dev/null; then
+            echo -e "  ${GREEN}PASS${NC}  $name (compile error expected)"
+            passed=$((passed + 1))
+            return 0
+        fi
         echo -e "  ${RED}FAIL${NC}  $name (compile error)"
         failed=$((failed + 1))
         return
+    fi
+
+    if grep -q "// compile_fail" "$file" 2>/dev/null; then
+        echo -e "  ${RED}FAIL${NC}  $name (expected compile error but compilation succeeded)"
+        failed=$((failed + 1))
+        return 1
     fi
 
     if ! clang "$out.o" -o "$out" -no-pie 2>/dev/null; then
@@ -132,6 +144,14 @@ if [ "$category" = "all" ] || [ "$category" = "packages" ]; then
     done
     # Also run the top-level package test files
     for f in "$TESTDIR"/packages/main*.hk; do
+        [ -f "$f" ] && run_test "$f"
+    done
+    echo
+fi
+
+if [ "$category" = "all" ] || [ "$category" = "errors" ]; then
+    echo -e "${BOLD}errors/${NC}"
+    for f in "$TESTDIR"/errors/*.hk; do
         [ -f "$f" ] && run_test "$f"
     done
     echo
