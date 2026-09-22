@@ -616,9 +616,8 @@ bool NLLBorrowChecker::check_borrow_rules(CFG &cfg) {
       for (auto &br : borrows) {
         if (br.var_name != var) continue;
         if (node.id > br.create_node && node.id <= br.end_node) {
-          set_error("cannot assign to '" + var +
-                        "' because it is borrowed here",
-                    br.expr);
+          std::string borrow_kind = br.is_mut ? "mutably borrowed" : "borrowed";
+          set_error("cannot assign to '" + var + "' because it is " + borrow_kind + " here", br.expr);
           return false;
         }
       }
@@ -709,7 +708,7 @@ bool NLLBorrowChecker::check_return_borrows(
         }
         if (!is_param) {
           set_error(
-              "cannot return reference to local '" + id->name +
+              "cannot return reference to local variable '" + id->name +
                   "' — only parameters can be returned as references",
               ret->value.get());
           return false;
