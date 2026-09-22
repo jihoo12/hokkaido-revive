@@ -307,6 +307,12 @@ void NLLBorrowChecker::collect_borrows(Stmt *stmt, CFG &cfg, int node_id) {
       collect_borrows(s.get(), cfg, node_id);
     return;
   }
+  if (auto *brk = dynamic_cast<BreakStmt *>(stmt)) {
+    return;
+  }
+  if (auto *cont = dynamic_cast<ContinueStmt *>(stmt)) {
+    return;
+  }
 }
 
 // =========================================================================
