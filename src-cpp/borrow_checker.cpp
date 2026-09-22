@@ -153,13 +153,14 @@ void NLLBorrowChecker::collect_borrows_expr(
     // We need the type of mcall->object, but we don't have type info here.
     // Heuristic: look up all impls that have this method name.
     // If the first param is &self → shared borrow; &mut self → mutable borrow.
+    bool found_method = false;
     for (auto *impl : impl_decls) {
       for (auto &m : impl->methods) {
         if (m->name == mcall->method_name && !m->params.empty()) {
           auto &self_param = m->params[0];
           if (is_ref_type(self_param.type_ann)) {
             std::string var = root_var(mcall->object.get());
-            if (!var.empty()) {
+            if (!var.empty() && !found_method) {
               BorrowRegion br;
               br.var_name = var;
               br.ref_var = "";
@@ -168,6 +169,7 @@ void NLLBorrowChecker::collect_borrows_expr(
               br.end_node = node_id;
               br.expr = mcall->object.get();
               borrows.push_back(br);
+              found_method = true;
             }
           }
         }
